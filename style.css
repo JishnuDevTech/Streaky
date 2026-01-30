@@ -1225,3 +1225,60 @@ body.no-animations *::after {
     animation: none !important;
     transition: none !important;
 }
+/* ===== MOBILE OPTIMIZATION FOR SMALL SCREENS ===== */
+@media (max-width: 360px) {
+    /* Cards & Containers */
+    .login-card,
+    .streak-card,
+    .predefined-card,
+    .modal-content {
+        padding: var(--spacing-md); /* reduce padding for small screens */
+    }
+
+    .dashboard {
+        padding: var(--spacing-lg) var(--spacing-sm); /* smaller side padding */
+    }
+
+    /* Text scaling */
+    .logo h1 {
+        font-size: 1.8rem; /* smaller logo text */
+    }
+
+    .tagline {
+        font-size: 0.9rem; /* smaller tagline */
+    }
+
+    .dashboard-header h2 {
+        font-size: 1.8rem; /* header fits smaller screen */
+    }
+
+    .subtitle {
+        font-size: 1rem;
+    }
+
+    /* Streak & Predefined Grids */
+    .streaks-grid,
+    .predefined-streaks {
+        grid-template-columns: 1fr; /* single column for tiny screens */
+        gap: var(--spacing-sm);
+    }
+
+    .streak-stats {
+        grid-template-columns: 1fr; /* stack stats vertically */
+        gap: var(--spacing-xs);
+    }
+
+    /* Buttons */
+    .btn,
+    .btn-add,
+    .btn-complete {
+        padding: var(--spacing-xs) var(--spacing-sm);
+        font-size: 0.85rem;
+    }
+
+    /* Modals */
+    .modal-content {
+        width: 95%;
+        max-height: 85vh; /* prevent vertical overflow */
+    }
+}

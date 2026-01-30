@@ -2,22 +2,26 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <!-- Single viewport meta, safe for iOS/Android -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <title>Streaky - Track Your Daily Habits</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="mobile.css">
+
+    <!-- Optional: mobile-friendly fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <!-- Login Screen -->
     <div id="loginScreen" class="screen active">
-        <div class="login-container">
-            <div class="login-card">
-                <div class="logo">
-                    <div class="logo-icon">🔥</div>
-                    <h1>Streaky</h1>
-                </div>
-                <p class="tagline">Keep your streaks alive, one day at a time</p>
+    <div class="login-container" style="padding: 1rem; display: flex; justify-content: center; align-items: center; min-height: 100vh;">
+        <div class="login-card" style="width: 100%; max-width: 400px; padding: 2rem; box-sizing: border-box;">
+            <div class="logo" style="text-align: center;">
+                <div class="logo-icon" style="font-size: 3rem;">🔥</div>
+                <h1 style="font-size: 1.8rem; margin: 0.5rem 0;">Streaky</h1>
+            </div>
+            <p class="tagline" style="text-align: center; font-size: 1rem; margin-bottom: 1.5rem;">Keep your streaks alive, one day at a time</p>
                 
                 <div class="success-message" id="loginSuccess"></div>
                 <div class="error-message" id="loginError"></div>
