@@ -1,0 +1,109 @@
+/* ================================
+   MOBILE / TABLET COMPATIBILITY
+   ================================ */
+
+/* ---- GLOBAL FIXES ---- */
+html, body {
+    height: 100%;
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+}
+
+.screen {
+    position: fixed;
+    inset: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.login-container {
+    min-height: 100svh;
+    padding: 16px;
+}
+
+/* ---- LOGIN / SIGNUP / FORGOT ---- */
+.login-card {
+    width: 100%;
+    max-width: 420px;
+    padding: 24px;
+}
+
+input,
+button {
+    font-size: 16px; /* iOS zoom fix */
+}
+
+/* ---- BUTTON STACKING ---- */
+.login-form button {
+    width: 100%;
+}
+
+/* ---- MODALS ---- */
+.modal {
+    align-items: flex-end;
+}
+
+.modal-content {
+    width: 100%;
+    max-width: none;
+    max-height: 92svh;
+    border-radius: 20px 20px 0 0;
+}
+
+/* ---- DASHBOARD ---- */
+.dashboard {
+    padding: 16px;
+}
+
+.streaks-grid {
+    grid-template-columns: 1fr;
+}
+
+.predefined-streaks {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+/* ---- NAVBAR ---- */
+.nav-actions {
+    gap: 8px;
+}
+
+.btn-add {
+    font-size: 0.9rem;
+    padding: 8px 12px;
+}
+
+/* ================================
+   TABLETS
+   ================================ */
+@media (min-width: 768px) {
+    .streaks-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .predefined-streaks {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .modal-content {
+        max-width: 700px;
+        border-radius: 20px;
+    }
+}
+
+/* ================================
+   DESKTOP
+   ================================ */
+@media (min-width: 1024px) {
+    .streaks-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .predefined-streaks {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    .modal {
+        align-items: center;
+    }
+}
