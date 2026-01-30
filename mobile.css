@@ -252,3 +252,39 @@ button,
     grid-template-columns: repeat(3, 1fr) !important;
   }
 }
+/* =====================================
+   FIX SCREEN LAYOUT FLOW (CRITICAL)
+   ===================================== */
+
+/* Allow normal document flow on dashboard */
+#dashboardScreen.screen {
+  position: relative !important;
+  inset: auto !important;
+  height: auto !important;
+  min-height: 100vh;
+  overflow: visible !important;
+}
+
+/* Keep auth screens fixed (login/signup) */
+#loginScreen.screen,
+#signupScreen.screen {
+  position: fixed !important;
+  inset: 0;
+  overflow-y: auto;
+}
+
+/* =====================================
+   QUICK START GRID (NOW IT WILL WORK)
+   ===================================== */
+
+@media (max-width: 768px) {
+  .predefined-streaks {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .predefined-streaks {
+    grid-template-columns: 1fr !important;
+  }
+}
