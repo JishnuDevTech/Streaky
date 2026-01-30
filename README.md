@@ -32,8 +32,7 @@ Streaky is designed to turn habit tracking into a fun, interactive experience. U
 ---
 
 ## Demo
-Check out the live project: [Streaky Live Demo](#)  
-*(Replace `#` with your actual live link if hosted)*
+Check out the live project: [Streaky Live Demo](https://streak-hub.netlify.app/)  
 
 ---
 
@@ -42,10 +41,7 @@ Check out the live project: [Streaky Live Demo](#)
 2. Sign in using Firebase authentication
 3. Add a streak for any activity
 4. Log daily progress to build streaks
-5. Enjoy colorful animations as you grow your streaks!
-
-![Screenshot](screenshot.png)  
-*(Replace `screenshot.png` with your actual image file)*
+5. Enjoy colorful animations as you grow your strea
 
 ---
 
