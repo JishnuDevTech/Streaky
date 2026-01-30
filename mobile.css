@@ -198,3 +198,54 @@ button,
     grid-template-columns: repeat(4, 1fr);
   }
 }
+/* =====================================
+   FORCE QUICK START MOBILE GRID (OVERRIDE)
+   ===================================== */
+
+/* Catch ALL possible wrappers */
+.quick-start,
+.quick-starts,
+.quickStart,
+#quick-start,
+#quickStart,
+[class*="quick"] {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 12px !important;
+}
+
+/* Catch ALL possible cards */
+.quick-start-card,
+.quick-card,
+.streak-card,
+.card,
+[class*="card"] {
+  width: 100% !important;
+  min-height: 120px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Prevent vertical stacking */
+.quick-start > *,
+[class*="quick"] > * {
+  margin: 0 !important;
+}
+
+/* Tablets */
+@media (min-width: 600px) {
+  .quick-start,
+  [class*="quick"] {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
+
+/* Desktop */
+@media (min-width: 1024px) {
+  .quick-start,
+  [class*="quick"] {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+}
