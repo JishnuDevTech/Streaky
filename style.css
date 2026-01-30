@@ -1232,47 +1232,47 @@ body.no-animations *::after {
     .streak-card,
     .predefined-card,
     .modal-content {
-        padding: var(--spacing-md); /* reduce padding for small screens */
+        padding: 1rem; /* reduced padding for small screens */
     }
 
     .dashboard {
-        padding: var(--spacing-lg) var(--spacing-sm); /* smaller side padding */
+        padding: 1rem 0.5rem; /* smaller side padding */
     }
 
     /* Text scaling */
     .logo h1 {
-        font-size: 1.8rem; /* smaller logo text */
+        font-size: 1.6rem; /* smaller logo text */
     }
 
     .tagline {
-        font-size: 0.9rem; /* smaller tagline */
+        font-size: 0.85rem; /* smaller tagline */
     }
 
     .dashboard-header h2 {
-        font-size: 1.8rem; /* header fits smaller screen */
+        font-size: 1.6rem; /* header fits smaller screen */
     }
 
     .subtitle {
-        font-size: 1rem;
+        font-size: 0.95rem;
     }
 
     /* Streak & Predefined Grids */
     .streaks-grid,
     .predefined-streaks {
         grid-template-columns: 1fr; /* single column for tiny screens */
-        gap: var(--spacing-sm);
+        gap: 0.5rem;
     }
 
     .streak-stats {
         grid-template-columns: 1fr; /* stack stats vertically */
-        gap: var(--spacing-xs);
+        gap: 0.25rem;
     }
 
     /* Buttons */
     .btn,
     .btn-add,
     .btn-complete {
-        padding: var(--spacing-xs) var(--spacing-sm);
+        padding: 0.5rem 0.75rem;
         font-size: 0.85rem;
     }
 
@@ -1280,5 +1280,95 @@ body.no-animations *::after {
     .modal-content {
         width: 95%;
         max-height: 85vh; /* prevent vertical overflow */
+    }
+}
+
+/* ===== MOBILE UI FIXES (up to 480px) ===== */
+@media (max-width: 480px) {
+    body, html {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        font-size: 16px;
+    }
+
+    .screen {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center; /* vertical center */
+        align-items: center;
+        padding: 0.5rem 1rem;
+        box-sizing: border-box;
+        overflow-y: auto; /* allow scrolling if keyboard appears */
+    }
+
+    .login-card {
+        width: 100%;
+        max-width: 400px;
+        padding: 1.5rem;
+        box-sizing: border-box;
+    }
+
+    form.login-form {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    input, button {
+        width: 100%;
+        font-size: 16px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        box-sizing: border-box;
+    }
+
+    .screen .btn-link,
+    .screen .btn-secondary {
+        font-size: 0.9rem;
+        padding: 8px 12px;
+    }
+
+    #googleSignInBtn {
+        width: 100%;
+        font-size: 16px;
+        padding: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .password-toggle {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        border: none;
+        background: none;
+        cursor: pointer;
+    }
+
+    /* Messages */
+    .message {
+        font-size: 13px;
+        padding: 6px 10px;
+        margin-bottom: 6px;
+    }
+
+    .divider {
+        margin: 12px 0;
+    }
+
+    .divider span {
+        background: #f5f5f5;
+        padding: 0 6px;
+        font-size: 0.85rem;
+    }
+
+    .divider hr {
+        border-top: 1px solid #ccc;
     }
 }

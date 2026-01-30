@@ -97,6 +97,18 @@ const cancelStreakBtn = document.getElementById('cancelStreakBtn');
 
 console.log('✅ DOM elements loaded');
 
+// ===== MOBILE INPUT SCROLL FIX =====
+document.querySelectorAll('input').forEach(input => {
+    input.addEventListener('focus', () => {
+        if (window.innerWidth <= 480) {
+            setTimeout(() => {
+                input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 300);
+        }
+    });
+});
+
+
 // ===== UTILITY FUNCTIONS =====
 
 function showError(element, message) {
@@ -906,6 +918,7 @@ document.getElementById('deleteAccountBtn').addEventListener('click', async () =
         alert('Failed to delete account: ' + error.message);
     }
 });
+
 
 // ===== MODAL UTILITIES =====
 
