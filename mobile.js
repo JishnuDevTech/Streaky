@@ -1,95 +1,61 @@
-/* ================================
-   MOBILE / RESPONSIVE FIX JS
-   ================================ */
+/* ===============================
+   MOBILE SCROLL & MODAL FIX
+   =============================== */
 
-/* ---- SAFE VIEWPORT HEIGHT FIX (iOS / Android) ---- */
-function setSafeVH() {
+(function () {
+  // Fix viewport height for mobile browsers
+  function setViewportHeight() {
     const vh = window.innerHeight * 0.01;
     document.documentElement.style.setProperty('--vh', `${vh}px`);
-}
-setSafeVH();
-window.addEventListener('resize', setSafeVH);
-window.addEventListener('orientationchange', setSafeVH);
+  }
 
-/* ---- SCREEN SWITCH (NO SCROLL JUMP) ---- */
-function showScreen(screenId) {
-    document.querySelectorAll('.screen').forEach(screen => {
-        screen.classList.remove('active');
-    });
+  setViewportHeight();
+  window.addEventListener('resize', setViewportHeight);
 
-    const target = document.getElementById(screenId);
-    if (target) {
-        target.classList.add('active');
-        target.scrollTop = 0;
-    }
-}
+  // Force all auth screens to start at top
+  function forceTop() {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }
 
-/* ---- LOCK BODY SCROLL ONLY FOR MODALS ---- */
-function lockBodyScroll() {
-    document.body.style.position = 'fixed';
-    document.body.style.width = '100%';
-}
-
-function unlockBodyScroll() {
-    document.body.style.position = '';
-    document.body.style.width = '';
-}
-
-/* ---- MODAL HANDLING (MOBILE SAFE) ---- */
-function openModal(modal) {
+  // Patch modal open behavior
+  window.openModal = function (modal) {
     if (!modal) return;
+
     modal.classList.add('active');
-    lockBodyScroll();
-}
+    modal.style.position = 'fixed';
+    modal.style.top = '0';
+    modal.style.left = '0';
+    modal.style.width = '100%';
+    modal.style.height = 'calc(var(--vh, 1vh) * 100)';
+    modal.style.overflowY = 'auto';
+    modal.style.webkitOverflowScrolling = 'touch';
 
-function closeModal(modal) {
+    document.body.style.height = '100%';
+    document.body.style.overflow = 'hidden';
+
+    forceTop();
+  };
+
+  // Patch modal close behavior
+  window.closeModal = function (modal) {
     if (!modal) return;
+
     modal.classList.remove('active');
-    unlockBodyScroll();
-}
 
-/* ---- AUTO FIX INPUT FOCUS SCROLL ---- */
-document.addEventListener('focusin', (e) => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-        setTimeout(() => {
-            e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 300);
-    }
-});
+    document.body.style.overflow = 'auto';
+    document.body.style.height = 'auto';
 
-/* ---- BACKDROP CLICK CLOSE ---- */
-document.querySelectorAll('.modal-overlay').forEach(overlay => {
-    overlay.addEventListener('click', () => {
-        const modal = overlay.closest('.modal');
-        closeModal(modal);
-    });
-});
+    forceTop();
+  };
 
-/* ---- ESC CLOSE (DESKTOP) ---- */
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-        document.querySelectorAll('.modal.active').forEach(modal => {
-            closeModal(modal);
-        });
-    }
-});
+  // Fix signup / forgot appearing below
+  document.addEventListener('click', (e) => {
+    const target = e.target.closest('[data-screen]');
+    if (!target) return;
 
-/* ---- PREVENT DOUBLE TAP ZOOM ---- */
-let lastTouchEnd = 0;
-document.addEventListener('touchend', (event) => {
-    const now = Date.now();
-    if (now - lastTouchEnd <= 300) {
-        event.preventDefault();
-    }
-    lastTouchEnd = now;
-}, false);
+    setTimeout(forceTop, 50);
+  });
 
-/* ---- IOS SAFARI INPUT ZOOM FIX ---- */
-document.querySelectorAll('input, textarea').forEach(input => {
-    input.addEventListener('focus', () => {
-        document.body.classList.add('input-focus');
-    });
-    input.addEventListener('blur', () => {
-        document.body.classList.remove('input-focus');
-    });
-});
+  // Safety: always reset scroll on page load
+  window.addEventListener('load', forceTop);
+})();
