@@ -1,31 +1,33 @@
 // ===== FIREBASE CONFIGURATION =====
-// REPLACE THESE VALUES WITH YOUR FIREBASE PROJECT CONFIGURATION
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyAQPFNKQREJWscJZ54Bw54rSTpUI4fJz6M",
-  authDomain: "streaky-70353.firebaseapp.com",
-  projectId: "streaky-70353",
-  storageBucket: "streaky-70353.firebasestorage.app",
-  messagingSenderId: "549095781172",
-  appId: "1:549095781172:web:2807a33a38f60809852b61",
-  measurementId: "G-F4CE7TRTQ7"
+    apiKey: "AIzaSyAQPFNKQREJWscJZ54Bw54rSTpUI4fJz6M",
+    authDomain: "streaky-70353.firebaseapp.com",
+    projectId: "streaky-70353",
+    storageBucket: "streaky-70353.firebasestorage.app",
+    messagingSenderId: "549095781172",
+    appId: "1:549095781172:web:2807a33a38f60809852b61",
+    measurementId: "G-F4CE7TRTQ7"
 };
+
 // Initialize Firebase
 console.log('🔥 Initializing Firebase...');
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+const storage = firebase.storage();
 console.log('✅ Firebase initialized');
 
 // ===== STATE =====
 let currentUser = null;
 let userStreaks = [];
 let currentStreakDetail = null;
+let currentCalendarDate = new Date();
 let appSettings = {
     dailyReminders: false,
     streakAlerts: true,
     enableAnimations: true,
-    soundEffects: false
+    soundEffects: false,
+    reminderTime: '09:00'
 };
 
 // ===== PREDEFINED STREAKS =====
@@ -38,40 +40,42 @@ const predefinedStreaks = [
     { name: 'Early Wake', icon: '☀️', description: 'Wake up early', duration: 21 }
 ];
 
+// Notification sound URL (leave blank for user to add)
+const NOTIFICATION_SOUND_URL = 'phone-alert-marimba-bubble-om-fx-1-00-01.mp3';
+
 // ===== DOM ELEMENTS =====
 console.log('📱 Getting DOM elements...');
 
 // Screens
+const welcomeScreen = document.getElementById('welcomeScreen');
 const loginScreen = document.getElementById('loginScreen');
 const signupScreen = document.getElementById('signupScreen');
 const forgotPasswordScreen = document.getElementById('forgotPasswordScreen');
 const dashboardScreen = document.getElementById('dashboardScreen');
 
-// Login elements
+// Welcome
+const welcomeLoginBtn = document.getElementById('welcomeLoginBtn');
+
+// Auth elements
 const loginForm = document.getElementById('loginForm');
 const emailInput = document.getElementById('emailInput');
 const passwordInput = document.getElementById('passwordInput');
-const loginBtn = document.getElementById('loginBtn');
 const showSignupBtn = document.getElementById('showSignupBtn');
 const forgotPasswordBtn = document.getElementById('forgotPasswordBtn');
 const googleSignInBtn = document.getElementById('googleSignInBtn');
 const loginError = document.getElementById('loginError');
 const loginSuccess = document.getElementById('loginSuccess');
 
-// Signup elements
 const signupForm = document.getElementById('signupForm');
 const signupName = document.getElementById('signupName');
 const signupEmail = document.getElementById('signupEmail');
 const signupPassword = document.getElementById('signupPassword');
 const signupConfirmPassword = document.getElementById('signupConfirmPassword');
-const signupBtn = document.getElementById('signupBtn');
 const backToLoginBtn = document.getElementById('backToLoginBtn');
 const signupError = document.getElementById('signupError');
 
-// Forgot password elements
 const forgotForm = document.getElementById('forgotForm');
 const forgotEmail = document.getElementById('forgotEmail');
-const resetPasswordBtn = document.getElementById('resetPasswordBtn');
 const backToLoginFromForgotBtn = document.getElementById('backToLoginFromForgotBtn');
 const forgotError = document.getElementById('forgotError');
 const forgotSuccess = document.getElementById('forgotSuccess');
@@ -80,24 +84,48 @@ const forgotSuccess = document.getElementById('forgotSuccess');
 const logoutBtn = document.getElementById('logoutBtn');
 const addStreakBtn = document.getElementById('addStreakBtn');
 const settingsBtn = document.getElementById('settingsBtn');
-const streaksContainer = document.getElementById('streaksContainer');
-const emptyState = document.getElementById('emptyState');
+const profileBtn = document.getElementById('profileBtn');
+const profileImage = document.getElementById('profileImage');
+const profileInitials = document.getElementById('profileInitials');
+
+// Stats
+const totalStreaksEl = document.getElementById('totalStreaks');
+const longestStreakEl = document.getElementById('longestStreak');
+const completedTodayEl = document.getElementById('completedToday');
+const totalDaysEl = document.getElementById('totalDays');
+
+// Content
 const predefinedStreaksContainer = document.getElementById('predefinedStreaks');
+const gridView = document.getElementById('gridView');
+const calendarView = document.getElementById('calendarView');
+const emptyState = document.getElementById('emptyState');
 
 // Modals
 const addStreakModal = document.getElementById('addStreakModal');
 const streakDetailModal = document.getElementById('streakDetailModal');
 const settingsModal = document.getElementById('settingsModal');
-const streakNameInput = document.getElementById('streakName');
-const streakDurationInput = document.getElementById('streakDuration');
-const streakDescriptionInput = document.getElementById('streakDescription');
-const streakIconInput = document.getElementById('streakIcon');
-const createStreakBtn = document.getElementById('createStreakBtn');
-const cancelStreakBtn = document.getElementById('cancelStreakBtn');
+
+// Toast
+const toast = document.getElementById('toast');
 
 console.log('✅ DOM elements loaded');
 
 // ===== UTILITY FUNCTIONS =====
+
+function showToast(message, type = 'success') {
+    toast.textContent = message;
+    toast.className = `toast ${type}`;
+    toast.classList.add('show');
+    
+    if (appSettings.soundEffects && NOTIFICATION_SOUND_URL) {
+        const audio = new Audio(NOTIFICATION_SOUND_URL);
+        audio.play().catch(e => console.log('Sound play failed:', e));
+    }
+    
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 3000);
+}
 
 function showError(element, message) {
     console.log('❌ Error:', message);
@@ -124,65 +152,88 @@ function clearMessages() {
 
 function getErrorMessage(errorCode) {
     const messages = {
-        'auth/user-not-found': '❌ No account found. Please create an account first.',
-        'auth/wrong-password': '❌ Incorrect password. Please try again.',
-        'auth/invalid-credential': '❌ Invalid email or password. Please check and try again.',
-        'auth/email-already-in-use': '❌ This email is already registered. Please sign in instead.',
-        'auth/weak-password': '⚠️ Password is too weak. Please use a stronger password.',
-        'auth/invalid-email': '⚠️ Invalid email address format.',
-        'auth/too-many-requests': '⚠️ Too many failed attempts. Please try again later.',
-        'auth/network-request-failed': '⚠️ Network error. Please check your connection.',
-        'auth/popup-blocked': '⚠️ Popup was blocked. Please allow popups for this site.',
-        'auth/popup-closed-by-user': '⚠️ Sign-in cancelled. Please try again.'
+        'auth/user-not-found': '❌ No account found with this email',
+        'auth/wrong-password': '❌ Incorrect password',
+        'auth/invalid-credential': '❌ Invalid email or password',
+        'auth/email-already-in-use': '❌ Email already registered',
+        'auth/weak-password': '⚠️ Password must be at least 6 characters',
+        'auth/invalid-email': '⚠️ Invalid email format',
+        'auth/too-many-requests': '⚠️ Too many attempts. Try again later',
+        'auth/network-request-failed': '⚠️ Network error. Check connection',
+        'auth/popup-blocked': '⚠️ Popup blocked. Please allow popups',
+        'auth/popup-closed-by-user': '⚠️ Sign-in cancelled'
     };
-    return messages[errorCode] || '❌ An error occurred. Please try again.';
+    return messages[errorCode] || '❌ An error occurred. Please try again';
+}
+
+function getInitials(name) {
+    if (!name) return '?';
+    const parts = name.trim().split(' ');
+    if (parts.length === 1) return parts[0][0].toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 // ===== SCREEN MANAGEMENT =====
 
+function showWelcome() {
+    console.log('Showing welcome screen');
+    welcomeScreen.classList.add('active');
+    loginScreen.classList.remove('active');
+    signupScreen.classList.remove('active');
+    forgotPasswordScreen.classList.remove('active');
+    dashboardScreen.classList.remove('active');
+    clearMessages();
+}
+
 function showLogin() {
     console.log('Showing login screen');
+    welcomeScreen.classList.remove('active');
     loginScreen.classList.add('active');
     signupScreen.classList.remove('active');
     forgotPasswordScreen.classList.remove('active');
     dashboardScreen.classList.remove('active');
-    document.body.style.overflow = 'auto';
     clearMessages();
 }
 
 function showSignup() {
     console.log('Showing signup screen');
+    welcomeScreen.classList.remove('active');
     loginScreen.classList.remove('active');
     signupScreen.classList.add('active');
     forgotPasswordScreen.classList.remove('active');
     dashboardScreen.classList.remove('active');
-    document.body.style.overflow = 'auto';
     clearMessages();
 }
 
 function showForgotPassword() {
     console.log('Showing forgot password screen');
+    welcomeScreen.classList.remove('active');
     loginScreen.classList.remove('active');
     signupScreen.classList.remove('active');
     forgotPasswordScreen.classList.add('active');
     dashboardScreen.classList.remove('active');
-    document.body.style.overflow = 'auto';
     clearMessages();
 }
 
 function showDashboard() {
     console.log('Showing dashboard');
+    welcomeScreen.classList.remove('active');
     loginScreen.classList.remove('active');
     signupScreen.classList.remove('active');
     forgotPasswordScreen.classList.remove('active');
     dashboardScreen.classList.add('active');
-    document.body.style.overflow = 'auto';
     renderPredefinedStreaks();
+    updateStats();
+}
+
+// ===== WELCOME SCREEN =====
+
+if (welcomeLoginBtn) {
+    welcomeLoginBtn.addEventListener('click', () => showLogin());
 }
 
 // ===== PASSWORD TOGGLE =====
 
-console.log('Setting up password toggles...');
 document.querySelectorAll('.password-toggle').forEach(button => {
     button.addEventListener('click', function(e) {
         e.preventDefault();
@@ -190,8 +241,6 @@ document.querySelectorAll('.password-toggle').forEach(button => {
         const targetId = this.dataset.target;
         const input = document.getElementById(targetId);
         const icon = this.querySelector('.eye-icon');
-        
-        console.log('Password toggle clicked for:', targetId);
         
         if (input.type === 'password') {
             input.type = 'text';
@@ -205,96 +254,102 @@ document.querySelectorAll('.password-toggle').forEach(button => {
 
 // ===== AUTHENTICATION =====
 
-console.log('Setting up authentication...');
-
-// Auth state listener
-auth.onAuthStateChanged(user => {
+auth.onAuthStateChanged(async user => {
     if (user) {
         console.log('✅ User logged in:', user.email);
         currentUser = user;
+        
+        // Set profile image/initials
+        updateProfileDisplay();
+        
         showDashboard();
-        loadUserStreaks();
+        await loadUserStreaks();
         loadSettings();
+        setupDailyReminder();
     } else {
         console.log('❌ No user logged in');
         currentUser = null;
-        showLogin();
+        
+        // Check if first visit
+        const hasVisited = localStorage.getItem('streaky-visited');
+        if (!hasVisited) {
+            showWelcome();
+            localStorage.setItem('streaky-visited', 'true');
+        } else {
+            showLogin();
+        }
     }
 });
 
-// Login form
+// Update profile display
+function updateProfileDisplay() {
+    if (!currentUser) return;
+    
+    const photoURL = currentUser.photoURL;
+    const displayName = currentUser.displayName || currentUser.email;
+    
+    if (photoURL) {
+        profileImage.src = photoURL;
+        profileImage.style.display = 'block';
+        profileInitials.style.display = 'none';
+    } else {
+        profileImage.style.display = 'none';
+        profileInitials.style.display = 'flex';
+        profileInitials.textContent = getInitials(displayName);
+    }
+}
+
+// Login
 if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        console.log('Login form submitted');
-        
         const email = emailInput.value.trim();
         const password = passwordInput.value;
         
         clearMessages();
         
         if (!email || !password) {
-            showError(loginError, '⚠️ Please enter both email and password');
+            showError(loginError, '⚠️ Please enter email and password');
             return;
         }
         
-        if (!email.includes('@')) {
-            showError(loginError, '⚠️ Please enter a valid email address');
-            return;
-        }
-        
-        loginBtn.textContent = '🔄 Signing in...';
-        loginBtn.disabled = true;
+        const submitBtn = loginForm.querySelector('button[type="submit"]');
+        const originalText = submitBtn.textContent;
+        submitBtn.textContent = '🔄 Signing in...';
+        submitBtn.disabled = true;
         
         try {
             await auth.signInWithEmailAndPassword(email, password);
-            console.log('✅ Login successful');
+            showToast('✅ Welcome back!', 'success');
         } catch (error) {
             console.error('❌ Login error:', error);
             showError(loginError, getErrorMessage(error.code));
-            loginBtn.textContent = 'Sign In';
-            loginBtn.disabled = false;
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
         }
     });
 }
 
-// Show signup button
 if (showSignupBtn) {
-    showSignupBtn.addEventListener('click', () => {
-        console.log('Show signup clicked');
-        showSignup();
-    });
+    showSignupBtn.addEventListener('click', () => showSignup());
 }
 
-// Forgot password button
 if (forgotPasswordBtn) {
-    forgotPasswordBtn.addEventListener('click', () => {
-        console.log('Forgot password clicked');
-        showForgotPassword();
-    });
+    forgotPasswordBtn.addEventListener('click', () => showForgotPassword());
 }
 
-// Back to login buttons
 if (backToLoginBtn) {
-    backToLoginBtn.addEventListener('click', () => {
-        console.log('Back to login clicked');
-        showLogin();
-    });
+    backToLoginBtn.addEventListener('click', () => showLogin());
 }
 
 if (backToLoginFromForgotBtn) {
-    backToLoginFromForgotBtn.addEventListener('click', () => {
-        console.log('Back to login from forgot clicked');
-        showLogin();
-    });
+    backToLoginFromForgotBtn.addEventListener('click', () => showLogin());
 }
 
-// Signup form
+// Signup
 if (signupForm) {
     signupForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        console.log('Signup form submitted');
-        
         const name = signupName.value.trim();
         const email = signupEmail.value.trim();
         const password = signupPassword.value;
@@ -303,17 +358,17 @@ if (signupForm) {
         clearMessages();
         
         if (!name) {
-            showError(signupError, '⚠️ Please enter your full name');
+            showError(signupError, '⚠️ Please enter your name');
             return;
         }
         
         if (!email || !email.includes('@')) {
-            showError(signupError, '⚠️ Please enter a valid email address');
+            showError(signupError, '⚠️ Please enter a valid email');
             return;
         }
         
         if (!password || password.length < 6) {
-            showError(signupError, '⚠️ Password must be at least 6 characters long');
+            showError(signupError, '⚠️ Password must be at least 6 characters');
             return;
         }
         
@@ -322,15 +377,16 @@ if (signupForm) {
             return;
         }
         
-        signupBtn.textContent = '🔄 Creating account...';
-        signupBtn.disabled = true;
+        const submitBtn = signupForm.querySelector('button[type="submit"]');
+        const originalText = submitBtn.textContent;
+        submitBtn.textContent = '🔄 Creating account...';
+        submitBtn.disabled = true;
         
         try {
             const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-            console.log('✅ Account created');
-            
             await userCredential.user.updateProfile({ displayName: name });
             
+            // Save user data
             try {
                 await db.collection('users').doc(userCredential.user.uid).set({
                     name,
@@ -341,63 +397,49 @@ if (signupForm) {
                 console.warn('Firestore write warning:', err);
             }
             
-            signupName.value = '';
-            signupEmail.value = '';
-            signupPassword.value = '';
-            signupConfirmPassword.value = '';
-            
-            showLogin();
-            showSuccess(loginSuccess, `✅ Account created successfully! Welcome ${name}. Please sign in.`);
-            emailInput.value = email;
+            signupForm.reset();
+            showToast('✅ Account created successfully! Welcome to Streaky!', 'success');
             
         } catch (error) {
             console.error('❌ Signup error:', error);
             showError(signupError, getErrorMessage(error.code));
-        } finally {
-            signupBtn.textContent = 'Create Account';
-            signupBtn.disabled = false;
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
         }
     });
 }
 
-// Forgot password form
+// Forgot password
 if (forgotForm) {
     forgotForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        console.log('Forgot password form submitted');
-        
         const email = forgotEmail.value.trim();
         
         clearMessages();
         
         if (!email || !email.includes('@')) {
-            showError(forgotError, '⚠️ Please enter a valid email address');
+            showError(forgotError, '⚠️ Please enter a valid email');
             return;
         }
         
-        resetPasswordBtn.textContent = '🔄 Sending...';
-        resetPasswordBtn.disabled = true;
+        const submitBtn = forgotForm.querySelector('button[type="submit"]');
+        const originalText = submitBtn.textContent;
+        submitBtn.textContent = '🔄 Sending...';
+        submitBtn.disabled = true;
         
         try {
             await auth.sendPasswordResetEmail(email);
-            console.log('✅ Password reset email sent');
-            showSuccess(forgotSuccess, '✅ Password reset link sent! Check your email.');
+            showSuccess(forgotSuccess, '✅ Password reset link sent! Check your email');
             forgotEmail.value = '';
             
-            setTimeout(() => {
-                showLogin();
-            }, 3000);
+            setTimeout(() => showLogin(), 3000);
             
         } catch (error) {
             console.error('❌ Password reset error:', error);
-            if (error.code === 'auth/user-not-found') {
-                showError(forgotError, '❌ No account found with this email');
-            } else {
-                showError(forgotError, getErrorMessage(error.code));
-            }
+            showError(forgotError, getErrorMessage(error.code));
         } finally {
-            resetPasswordBtn.textContent = 'Send Reset Link';
-            resetPasswordBtn.disabled = false;
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
         }
     });
 }
@@ -405,29 +447,41 @@ if (forgotForm) {
 // Google Sign In
 if (googleSignInBtn) {
     googleSignInBtn.addEventListener('click', async () => {
-        console.log('Google sign-in clicked');
         clearMessages();
         const provider = new firebase.auth.GoogleAuthProvider();
         
+        const originalText = googleSignInBtn.innerHTML;
         googleSignInBtn.textContent = '🔄 Opening Google...';
         googleSignInBtn.disabled = true;
         
         try {
-            await auth.signInWithPopup(provider);
-            console.log('✅ Google sign-in successful');
+            const result = await auth.signInWithPopup(provider);
+            
+            // Save/update user profile photo from Google
+            if (result.user.photoURL) {
+                try {
+                    await db.collection('users').doc(result.user.uid).set({
+                        photoURL: result.user.photoURL,
+                        lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+                } catch (err) {
+                    console.warn('Profile photo save warning:', err);
+                }
+            }
+            
+            showToast('✅ Signed in with Google!', 'success');
         } catch (error) {
             console.error('❌ Google sign-in error:', error);
             
             if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user') {
                 showError(loginError, '🔄 Popup blocked. Trying redirect...');
-                setTimeout(() => {
-                    auth.signInWithRedirect(provider);
-                }, 1500);
+                setTimeout(() => auth.signInWithRedirect(provider), 1500);
             } else {
                 showError(loginError, getErrorMessage(error.code));
-                googleSignInBtn.textContent = 'Continue with Google';
-                googleSignInBtn.disabled = false;
             }
+        } finally {
+            googleSignInBtn.innerHTML = originalText;
+            googleSignInBtn.disabled = false;
         }
     });
 }
@@ -438,10 +492,10 @@ if (logoutBtn) {
         if (confirm('Are you sure you want to log out?')) {
             try {
                 await auth.signOut();
-                console.log('✅ Logged out');
+                showToast('👋 Logged out successfully', 'success');
             } catch (error) {
                 console.error('❌ Logout error:', error);
-                alert('Logout failed: ' + error.message);
+                showToast('❌ Logout failed', 'error');
             }
         }
     });
@@ -450,7 +504,6 @@ if (logoutBtn) {
 // ===== PREDEFINED STREAKS =====
 
 function renderPredefinedStreaks() {
-    console.log('Rendering predefined streaks');
     if (!predefinedStreaksContainer) return;
     
     predefinedStreaksContainer.innerHTML = predefinedStreaks.map(streak => `
@@ -462,7 +515,6 @@ function renderPredefinedStreaks() {
     
     document.querySelectorAll('.predefined-card').forEach(card => {
         card.addEventListener('click', () => {
-            console.log('Predefined card clicked');
             const streak = JSON.parse(card.dataset.streak.replace(/&apos;/g, "'"));
             createStreakFromPredefined(streak);
         });
@@ -471,11 +523,9 @@ function renderPredefinedStreaks() {
 
 async function createStreakFromPredefined(predefinedStreak) {
     if (!currentUser) {
-        alert('Please log in first');
+        showToast('❌ Please log in first', 'error');
         return;
     }
-    
-    console.log('Creating streak from predefined:', predefinedStreak.name);
     
     try {
         const newStreak = {
@@ -492,11 +542,11 @@ async function createStreakFromPredefined(predefinedStreak) {
         };
         
         await db.collection('streaks').add(newStreak);
-        console.log('✅ Streak created');
-        loadUserStreaks();
+        showToast(`✅ ${predefinedStreak.name} streak created!`, 'success');
+        await loadUserStreaks();
     } catch (error) {
         console.error('❌ Error creating streak:', error);
-        alert('Failed to create streak: ' + error.message);
+        showToast('❌ Failed to create streak', 'error');
     }
 }
 
@@ -504,8 +554,6 @@ async function createStreakFromPredefined(predefinedStreak) {
 
 async function loadUserStreaks() {
     if (!currentUser) return;
-    
-    console.log('Loading user streaks...');
     
     try {
         const snapshot = await db.collection('streaks')
@@ -520,26 +568,39 @@ async function loadUserStreaks() {
         
         console.log(`✅ Loaded ${userStreaks.length} streaks`);
         renderStreaks();
+        updateStats();
     } catch (error) {
         console.error('❌ Error loading streaks:', error);
-        alert('Failed to load streaks: ' + error.message);
+        showToast('❌ Failed to load streaks', 'error');
     }
 }
 
-function renderStreaks() {
-    if (!streaksContainer || !emptyState) return;
+function updateStats() {
+    if (!currentUser) return;
     
-    console.log('Rendering streaks');
+    const total = userStreaks.length;
+    const longest = Math.max(0, ...userStreaks.map(s => s.currentStreak));
+    const completedToday = userStreaks.filter(s => checkIfCompletedToday(s)).length;
+    const totalDays = userStreaks.reduce((sum, s) => sum + s.totalDays, 0);
+    
+    if (totalStreaksEl) totalStreaksEl.textContent = total;
+    if (longestStreakEl) longestStreakEl.textContent = longest;
+    if (completedTodayEl) completedTodayEl.textContent = completedToday;
+    if (totalDaysEl) totalDaysEl.textContent = totalDays;
+}
+
+function renderStreaks() {
+    if (!gridView || !emptyState) return;
     
     if (userStreaks.length === 0) {
-        streaksContainer.innerHTML = '';
-        emptyState.style.display = 'block';
+        gridView.innerHTML = '';
+        emptyState.classList.add('show');
         return;
     }
     
-    emptyState.style.display = 'none';
+    emptyState.classList.remove('show');
     
-    streaksContainer.innerHTML = userStreaks.map(streak => {
+    gridView.innerHTML = userStreaks.map(streak => {
         const completion = streak.duration > 0 
             ? Math.min(100, Math.round((streak.totalDays / streak.duration) * 100))
             : 0;
@@ -557,17 +618,17 @@ function renderStreaks() {
                 </div>
                 
                 <div class="streak-stats">
-                    <div class="stat">
-                        <div class="stat-value">${streak.currentStreak}</div>
-                        <div class="stat-label">Current</div>
+                    <div class="streak-stat">
+                        <div class="streak-stat-value">${streak.currentStreak}</div>
+                        <div class="streak-stat-label">Current</div>
                     </div>
-                    <div class="stat">
-                        <div class="stat-value">${streak.totalDays}</div>
-                        <div class="stat-label">Total</div>
+                    <div class="streak-stat">
+                        <div class="streak-stat-value">${streak.totalDays}</div>
+                        <div class="streak-stat-label">Total</div>
                     </div>
-                    <div class="stat">
-                        <div class="stat-value">${completion}%</div>
-                        <div class="stat-label">Progress</div>
+                    <div class="streak-stat">
+                        <div class="streak-stat-value">${completion}%</div>
+                        <div class="streak-stat-label">Progress</div>
                     </div>
                 </div>
                 
@@ -582,19 +643,18 @@ function renderStreaks() {
                     <button class="btn-complete ${isCompletedToday ? 'completed' : ''}" 
                             data-streak-id="${streak.id}"
                             ${isCompletedToday ? 'disabled' : ''}>
-                        ${isCompletedToday ? '✓ Completed Today' : '+ Mark Complete'}
+                        ${isCompletedToday ? '✓ Completed Today' : '✓ Mark Complete'}
                     </button>
                 </div>
             </div>
         `;
     }).join('');
     
-    // Add click handlers
+    // Add event listeners
     document.querySelectorAll('.btn-complete').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
             const streakId = btn.dataset.streakId;
-            console.log('Mark complete clicked:', streakId);
             completeStreak(streakId);
         });
     });
@@ -602,7 +662,6 @@ function renderStreaks() {
     document.querySelectorAll('.streak-card').forEach(card => {
         card.addEventListener('click', () => {
             const streakId = card.dataset.streakId;
-            console.log('Streak card clicked:', streakId);
             showStreakDetail(streakId);
         });
     });
@@ -628,8 +687,6 @@ function checkIfCompletedToday(streak) {
 async function completeStreak(streakId) {
     const streak = userStreaks.find(s => s.id === streakId);
     if (!streak || checkIfCompletedToday(streak)) return;
-    
-    console.log('Completing streak:', streakId);
     
     try {
         const today = new Date();
@@ -661,47 +718,192 @@ async function completeStreak(streakId) {
             completedDates: firebase.firestore.FieldValue.arrayUnion(today.toISOString())
         });
         
-        console.log('✅ Streak completed');
-        loadUserStreaks();
+        // Celebrate milestones
+        if (appSettings.streakAlerts) {
+            if (newCurrentStreak === 7) {
+                showToast('🎉 Amazing! 7 day streak!', 'success');
+            } else if (newCurrentStreak === 30) {
+                showToast('🔥 Incredible! 30 day streak!', 'success');
+            } else if (newCurrentStreak === 100) {
+                showToast('🏆 LEGENDARY! 100 day streak!', 'success');
+            } else {
+                showToast(`✅ ${streak.name} completed! ${newCurrentStreak} day streak 🔥`, 'success');
+            }
+        } else {
+            showToast(`✅ ${streak.name} completed!`, 'success');
+        }
+        
+        await loadUserStreaks();
     } catch (error) {
         console.error('❌ Error completing streak:', error);
-        alert('Failed to complete streak: ' + error.message);
+        showToast('❌ Failed to complete streak', 'error');
     }
 }
 
-// ===== CUSTOM STREAK CREATION =====
+// ===== VIEW TOGGLE =====
 
-if (addStreakBtn) {
-    addStreakBtn.addEventListener('click', () => {
-        console.log('Add streak clicked');
-        openModal(addStreakModal);
+document.querySelectorAll('.view-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const view = btn.dataset.view;
+        
+        // Update active state
+        document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        // Toggle views
+        if (view === 'grid') {
+            gridView.style.display = 'grid';
+            calendarView.style.display = 'none';
+        } else if (view === 'calendar') {
+            gridView.style.display = 'none';
+            calendarView.style.display = 'block';
+            renderCalendar();
+        }
+    });
+});
+
+// ===== CALENDAR VIEW =====
+
+function renderCalendar() {
+    const calendarGrid = document.getElementById('calendarGrid');
+    const currentMonthEl = document.getElementById('currentMonth');
+    
+    if (!calendarGrid || !currentMonthEl) return;
+    
+    const year = currentCalendarDate.getFullYear();
+    const month = currentCalendarDate.getMonth();
+    
+    // Set month title
+    currentMonthEl.textContent = currentCalendarDate.toLocaleDateString('en-US', { 
+        month: 'long', 
+        year: 'numeric' 
+    });
+    
+    // Get first day of month and total days
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const totalDays = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
+    
+    // Clear calendar
+    calendarGrid.innerHTML = '';
+    
+    // Add day headers
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    dayNames.forEach(day => {
+        const header = document.createElement('div');
+        header.className = 'calendar-header';
+        header.textContent = day;
+        calendarGrid.appendChild(header);
+    });
+    
+    // Add empty cells for days before month starts
+    for (let i = 0; i < startingDayOfWeek; i++) {
+        const emptyCell = document.createElement('div');
+        emptyCell.className = 'calendar-day other-month';
+        calendarGrid.appendChild(emptyCell);
+    }
+    
+    // Add days of the month
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    for (let day = 1; day <= totalDays; day++) {
+        const dayDate = new Date(year, month, day);
+        dayDate.setHours(0, 0, 0, 0);
+        
+        const dayCell = document.createElement('div');
+        dayCell.className = 'calendar-day';
+        
+        if (dayDate.getTime() === today.getTime()) {
+            dayCell.classList.add('today');
+        }
+        
+        // Get completed streaks for this day
+        const completedStreaksThisDay = userStreaks.filter(streak => {
+            if (!streak.completedDates || !Array.isArray(streak.completedDates)) return false;
+            return streak.completedDates.some(dateStr => {
+                const completedDate = new Date(dateStr);
+                completedDate.setHours(0, 0, 0, 0);
+                return completedDate.getTime() === dayDate.getTime();
+            });
+        });
+        
+        dayCell.innerHTML = `
+            <div class="day-number">${day}</div>
+            <div class="day-dots">
+                ${completedStreaksThisDay.map(() => '<div class="day-dot"></div>').join('')}
+            </div>
+        `;
+        
+        calendarGrid.appendChild(dayCell);
+    }
+}
+
+// Calendar navigation
+const prevMonthBtn = document.getElementById('prevMonth');
+const nextMonthBtn = document.getElementById('nextMonth');
+
+if (prevMonthBtn) {
+    prevMonthBtn.addEventListener('click', () => {
+        currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1);
+        renderCalendar();
     });
 }
 
-if (cancelStreakBtn) {
-    cancelStreakBtn.addEventListener('click', () => {
-        closeModal(addStreakModal);
+if (nextMonthBtn) {
+    nextMonthBtn.addEventListener('click', () => {
+        currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1);
+        renderCalendar();
     });
+}
+
+// ===== ADD STREAK MODAL =====
+
+if (addStreakBtn) {
+    addStreakBtn.addEventListener('click', () => openModal(addStreakModal));
+}
+
+// Icon picker
+const iconOptions = document.querySelectorAll('.icon-option');
+const streakIconInput = document.getElementById('streakIcon');
+
+iconOptions.forEach(option => {
+    option.addEventListener('click', () => {
+        iconOptions.forEach(opt => opt.classList.remove('selected'));
+        option.classList.add('selected');
+        if (streakIconInput) {
+            streakIconInput.value = option.dataset.icon;
+        }
+    });
+});
+
+const createStreakBtn = document.getElementById('createStreakBtn');
+const cancelStreakBtn = document.getElementById('cancelStreakBtn');
+
+if (cancelStreakBtn) {
+    cancelStreakBtn.addEventListener('click', () => closeModal(addStreakModal));
 }
 
 if (createStreakBtn) {
     createStreakBtn.addEventListener('click', async () => {
-        const name = streakNameInput.value.trim();
-        const duration = parseInt(streakDurationInput.value);
-        const description = streakDescriptionInput.value.trim();
-        const icon = streakIconInput.value.trim() || '🎯';
+        const name = document.getElementById('streakName').value.trim();
+        const duration = parseInt(document.getElementById('streakDuration').value);
+        const description = document.getElementById('streakDescription').value.trim();
+        const icon = document.getElementById('streakIcon').value.trim() || '🎯';
         
         if (!name) {
-            alert('Please enter a streak name');
+            showToast('⚠️ Please enter a streak name', 'error');
             return;
         }
         
         if (!duration || duration < 1) {
-            alert('Please enter a valid duration');
+            showToast('⚠️ Please enter a valid duration', 'error');
             return;
         }
         
-        console.log('Creating custom streak:', name);
+        createStreakBtn.disabled = true;
+        createStreakBtn.textContent = '🔄 Creating...';
         
         try {
             const newStreak = {
@@ -718,18 +920,23 @@ if (createStreakBtn) {
             };
             
             await db.collection('streaks').add(newStreak);
-            console.log('✅ Custom streak created');
+            showToast(`✅ ${name} streak created!`, 'success');
             
-            streakNameInput.value = '';
-            streakDurationInput.value = '30';
-            streakDescriptionInput.value = '';
-            streakIconInput.value = '🎯';
+            // Reset form
+            document.getElementById('streakName').value = '';
+            document.getElementById('streakDuration').value = '30';
+            document.getElementById('streakDescription').value = '';
+            document.getElementById('streakIcon').value = '🎯';
+            iconOptions.forEach(opt => opt.classList.remove('selected'));
             
             closeModal(addStreakModal);
-            loadUserStreaks();
+            await loadUserStreaks();
         } catch (error) {
             console.error('❌ Error creating streak:', error);
-            alert('Failed to create streak: ' + error.message);
+            showToast('❌ Failed to create streak', 'error');
+        } finally {
+            createStreakBtn.disabled = false;
+            createStreakBtn.textContent = 'Create Streak';
         }
     });
 }
@@ -740,114 +947,243 @@ function showStreakDetail(streakId) {
     const streak = userStreaks.find(s => s.id === streakId);
     if (!streak) return;
     
-    console.log('Showing streak detail:', streak.name);
     currentStreakDetail = streak;
     
     document.getElementById('detailStreakName').textContent = `${streak.icon} ${streak.name}`;
     document.getElementById('detailCurrentStreak').textContent = streak.currentStreak;
     document.getElementById('detailTotalDays').textContent = streak.totalDays;
+    document.getElementById('detailTargetDays').textContent = streak.duration;
     
     const completion = streak.duration > 0 
         ? Math.min(100, Math.round((streak.totalDays / streak.duration) * 100))
         : 0;
     
-    document.getElementById('detailCompletion').textContent = `${completion}%`;
     document.getElementById('detailProgressPercent').textContent = `${completion}%`;
     
+    // Update progress ring
     const circle = document.getElementById('detailProgressCircle');
-    const radius = 90;
-    const circumference = 2 * Math.PI * radius;
-    const offset = circumference - (completion / 100) * circumference;
-    circle.style.strokeDashoffset = offset;
-    
-    if (!document.querySelector('#gradient')) {
-        const svg = circle.closest('svg');
-        const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
-        defs.innerHTML = `
-            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" style="stop-color:#f093fb;stop-opacity:1" />
-                <stop offset="100%" style="stop-color:#f5576c;stop-opacity:1" />
-            </linearGradient>
-        `;
-        svg.insertBefore(defs, svg.firstChild);
+    if (circle) {
+        const radius = 85;
+        const circumference = 2 * Math.PI * radius;
+        const offset = circumference - (completion / 100) * circumference;
+        circle.style.strokeDashoffset = offset;
     }
     
-    document.getElementById('detailDescription').textContent = 
-        streak.description || 'No description provided';
+    const descEl = document.getElementById('detailDescription');
+    if (descEl) {
+        descEl.textContent = streak.description || 'No description provided';
+    }
     
     openModal(streakDetailModal);
 }
 
-document.getElementById('deleteStreakBtn').addEventListener('click', async () => {
-    if (!currentStreakDetail) return;
-    
-    if (!confirm('Are you sure you want to delete this streak?')) return;
-    
-    try {
-        await db.collection('streaks').doc(currentStreakDetail.id).delete();
-        console.log('✅ Streak deleted');
-        closeModal(streakDetailModal);
-        loadUserStreaks();
-    } catch (error) {
-        console.error('❌ Error deleting streak:', error);
-        alert('Failed to delete streak: ' + error.message);
-    }
-});
+const deleteStreakBtn = document.getElementById('deleteStreakBtn');
+if (deleteStreakBtn) {
+    deleteStreakBtn.addEventListener('click', async () => {
+        if (!currentStreakDetail) return;
+        
+        if (!confirm(`Are you sure you want to delete "${currentStreakDetail.name}"? This cannot be undone.`)) return;
+        
+        deleteStreakBtn.disabled = true;
+        deleteStreakBtn.textContent = '🔄 Deleting...';
+        
+        try {
+            await db.collection('streaks').doc(currentStreakDetail.id).delete();
+            showToast(`✅ ${currentStreakDetail.name} deleted`, 'success');
+            closeModal(streakDetailModal);
+            await loadUserStreaks();
+        } catch (error) {
+            console.error('❌ Error deleting streak:', error);
+            showToast('❌ Failed to delete streak', 'error');
+        } finally {
+            deleteStreakBtn.disabled = false;
+            deleteStreakBtn.textContent = 'Delete Streak';
+        }
+    });
+}
 
 // ===== SETTINGS =====
 
 if (settingsBtn) {
     settingsBtn.addEventListener('click', () => {
-        console.log('Settings clicked');
         if (currentUser) {
             document.getElementById('settingsUserEmail').textContent = currentUser.email;
-            document.getElementById('settingsUserId').textContent = 'User ID: ' + currentUser.uid.substring(0, 12) + '...';
+            document.getElementById('settingsUserId').textContent = 'ID: ' + currentUser.uid.substring(0, 12) + '...';
+            
+            // Update profile photo in settings
+            const settingsProfileImage = document.getElementById('settingsProfileImage');
+            const settingsProfileInitials = document.getElementById('settingsProfileInitials');
+            
+            if (currentUser.photoURL) {
+                settingsProfileImage.src = currentUser.photoURL;
+                settingsProfileImage.style.display = 'block';
+                settingsProfileInitials.style.display = 'none';
+            } else {
+                settingsProfileImage.style.display = 'none';
+                settingsProfileInitials.style.display = 'flex';
+                settingsProfileInitials.textContent = getInitials(currentUser.displayName || currentUser.email);
+            }
         }
         openModal(settingsModal);
+    });
+}
+
+// Profile button click
+if (profileBtn) {
+    profileBtn.addEventListener('click', () => {
+        settingsBtn.click();
     });
 }
 
 function loadSettings() {
     const saved = localStorage.getItem('streaky-settings');
     if (saved) {
-        appSettings = JSON.parse(saved);
+        appSettings = { ...appSettings, ...JSON.parse(saved) };
     }
     
     document.getElementById('dailyReminders').checked = appSettings.dailyReminders;
     document.getElementById('streakAlerts').checked = appSettings.streakAlerts;
     document.getElementById('enableAnimations').checked = appSettings.enableAnimations;
     document.getElementById('soundEffects').checked = appSettings.soundEffects;
+    document.getElementById('reminderTime').value = appSettings.reminderTime;
     
     if (!appSettings.enableAnimations) {
         document.body.classList.add('no-animations');
     }
+    
+    // Show/hide reminder time
+    toggleReminderTimeSection();
 }
 
 function saveSettings() {
     localStorage.setItem('streaky-settings', JSON.stringify(appSettings));
 }
 
+function toggleReminderTimeSection() {
+    const section = document.getElementById('reminderTimeSection');
+    if (section) {
+        section.style.display = appSettings.dailyReminders ? 'flex' : 'none';
+    }
+}
+
+// Settings event listeners
 document.getElementById('dailyReminders').addEventListener('change', (e) => {
     appSettings.dailyReminders = e.target.checked;
     saveSettings();
+    toggleReminderTimeSection();
+    setupDailyReminder();
+    showToast(e.target.checked ? '🔔 Daily reminders enabled' : '🔕 Daily reminders disabled', 'success');
 });
 
 document.getElementById('streakAlerts').addEventListener('change', (e) => {
     appSettings.streakAlerts = e.target.checked;
     saveSettings();
+    showToast(e.target.checked ? '🎉 Streak alerts enabled' : '📴 Streak alerts disabled', 'success');
 });
 
 document.getElementById('enableAnimations').addEventListener('change', (e) => {
     appSettings.enableAnimations = e.target.checked;
     saveSettings();
     document.body.classList.toggle('no-animations', !e.target.checked);
+    showToast(e.target.checked ? '✨ Animations enabled' : '⏸️ Animations disabled', 'success');
 });
 
 document.getElementById('soundEffects').addEventListener('change', (e) => {
     appSettings.soundEffects = e.target.checked;
     saveSettings();
+    showToast(e.target.checked ? '🔊 Sound effects enabled' : '🔇 Sound effects disabled', 'success');
 });
 
+document.getElementById('reminderTime').addEventListener('change', (e) => {
+    appSettings.reminderTime = e.target.value;
+    saveSettings();
+    setupDailyReminder();
+    showToast('⏰ Reminder time updated', 'success');
+});
+
+// Profile photo upload
+const uploadPhotoBtn = document.getElementById('uploadPhotoBtn');
+const profilePhotoInput = document.getElementById('profilePhotoInput');
+const removePhotoBtn = document.getElementById('removePhotoBtn');
+
+if (uploadPhotoBtn && profilePhotoInput) {
+    uploadPhotoBtn.addEventListener('click', () => {
+        profilePhotoInput.click();
+    });
+    
+    profilePhotoInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        // Check file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            showToast('⚠️ Image must be less than 5MB', 'error');
+            return;
+        }
+        
+        uploadPhotoBtn.disabled = true;
+        uploadPhotoBtn.textContent = '🔄 Uploading...';
+        
+        try {
+            // Upload to Firebase Storage
+            const storageRef = storage.ref();
+            const photoRef = storageRef.child(`profile-photos/${currentUser.uid}/${Date.now()}_${file.name}`);
+            await photoRef.put(file);
+            
+            // Get download URL
+            const photoURL = await photoRef.getDownloadURL();
+            
+            // Update user profile
+            await currentUser.updateProfile({ photoURL });
+            
+            // Save to Firestore
+            await db.collection('users').doc(currentUser.uid).set({
+                photoURL
+            }, { merge: true });
+            
+            updateProfileDisplay();
+            showToast('✅ Profile photo updated!', 'success');
+            
+            // Refresh settings modal
+            settingsBtn.click();
+            setTimeout(() => settingsBtn.click(), 100);
+            
+        } catch (error) {
+            console.error('❌ Error uploading photo:', error);
+            showToast('❌ Failed to upload photo', 'error');
+        } finally {
+            uploadPhotoBtn.disabled = false;
+            uploadPhotoBtn.textContent = 'Upload Photo';
+            profilePhotoInput.value = '';
+        }
+    });
+}
+
+if (removePhotoBtn) {
+    removePhotoBtn.addEventListener('click', async () => {
+        if (!confirm('Remove profile photo?')) return;
+        
+        try {
+            await currentUser.updateProfile({ photoURL: null });
+            await db.collection('users').doc(currentUser.uid).update({
+                photoURL: firebase.firestore.FieldValue.delete()
+            });
+            
+            updateProfileDisplay();
+            showToast('✅ Profile photo removed', 'success');
+            
+            // Refresh settings modal
+            settingsBtn.click();
+            setTimeout(() => settingsBtn.click(), 100);
+            
+        } catch (error) {
+            console.error('❌ Error removing photo:', error);
+            showToast('❌ Failed to remove photo', 'error');
+        }
+    });
+}
+
+// Export data
 document.getElementById('exportDataBtn').addEventListener('click', async () => {
     if (!currentUser) return;
     
@@ -857,8 +1193,13 @@ document.getElementById('exportDataBtn').addEventListener('click', async () => {
             .get();
         
         const data = {
-            user: { email: currentUser.email, uid: currentUser.uid },
+            user: { 
+                email: currentUser.email, 
+                uid: currentUser.uid,
+                displayName: currentUser.displayName
+            },
             streaks: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })),
+            settings: appSettings,
             exportedAt: new Date().toISOString()
         };
         
@@ -870,25 +1211,27 @@ document.getElementById('exportDataBtn').addEventListener('click', async () => {
         a.click();
         URL.revokeObjectURL(url);
         
-        alert('✅ Data exported successfully!');
+        showToast('✅ Data exported successfully!', 'success');
     } catch (error) {
         console.error('❌ Export error:', error);
-        alert('Failed to export data: ' + error.message);
+        showToast('❌ Failed to export data', 'error');
     }
 });
 
+// Delete account
 document.getElementById('deleteAccountBtn').addEventListener('click', async () => {
     if (!currentUser) return;
     
-    if (!confirm('Are you sure you want to delete your account? This cannot be undone!')) return;
+    if (!confirm('⚠️ Are you sure you want to delete your account? This CANNOT be undone!')) return;
     
     const confirmation = prompt('Type "DELETE" to confirm:');
     if (confirmation !== 'DELETE') {
-        alert('Account deletion cancelled');
+        showToast('Account deletion cancelled', 'error');
         return;
     }
     
     try {
+        // Delete all streaks
         const snapshot = await db.collection('streaks')
             .where('userId', '==', currentUser.uid)
             .get();
@@ -897,26 +1240,63 @@ document.getElementById('deleteAccountBtn').addEventListener('click', async () =
         snapshot.docs.forEach(doc => batch.delete(doc.ref));
         await batch.commit();
         
+        // Delete user document
         await db.collection('users').doc(currentUser.uid).delete();
+        
+        // Delete auth account
         await currentUser.delete();
         
-        alert('✅ Your account has been deleted');
+        showToast('✅ Account deleted', 'success');
     } catch (error) {
         console.error('❌ Delete account error:', error);
-        alert('Failed to delete account: ' + error.message);
+        showToast('❌ Failed to delete account. You may need to re-login first.', 'error');
     }
 });
+
+// ===== DAILY REMINDER =====
+
+function setupDailyReminder() {
+    if (!appSettings.dailyReminders) return;
+    
+    // Request notification permission
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+    
+    // Check daily for incomplete streaks
+    const checkReminder = () => {
+        const now = new Date();
+        const [hours, minutes] = appSettings.reminderTime.split(':');
+        const reminderTime = new Date();
+        reminderTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+        
+        // If it's reminder time and we have incomplete streaks
+        if (Math.abs(now - reminderTime) < 60000) { // Within 1 minute
+            const incomplete = userStreaks.filter(s => !checkIfCompletedToday(s));
+            
+            if (incomplete.length > 0 && Notification.permission === 'granted') {
+                new Notification('Streaky Reminder 🔥', {
+                    body: `You have ${incomplete.length} streak${incomplete.length > 1 ? 's' : ''} to complete today!`,
+                    icon: '/path/to/icon.png' // Add your icon path
+                });
+            }
+        }
+    };
+    
+    // Check every minute
+    setInterval(checkReminder, 60000);
+}
 
 // ===== MODAL UTILITIES =====
 
 function openModal(modal) {
+    if (!modal) return;
     modal.classList.add('active');
-    document.body.style.overflow = 'hidden';
 }
 
 function closeModal(modal) {
+    if (!modal) return;
     modal.classList.remove('active');
-    document.body.style.overflow = 'auto';
 }
 
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
@@ -941,6 +1321,5 @@ document.addEventListener('keydown', (e) => {
 
 // ===== INITIALIZATION =====
 
-console.log('🚀 Streaky App Initialized');
-console.log('⚠️ Remember to replace Firebase config values in app.js');
-console.log('📝 All event listeners attached');
+console.log('🚀 Streaky App v2.0 Initialized');
+console.log('✨ Features: Calendar View, Profile Photos, Real-time Settings, Notifications');
