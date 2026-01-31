@@ -907,7 +907,6 @@ document.getElementById('deleteAccountBtn').addEventListener('click', async () =
     }
 });
 
-
 // ===== MODAL UTILITIES =====
 
 function openModal(modal) {
